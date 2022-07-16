@@ -29,7 +29,7 @@ buildscript {
 }
 
 plugins {
-    id 'com.diffplug.spotless' version '5.14.2'
+    id 'com.diffplug.spotless' version '6.7.0'
 }
 
 subprojects {
@@ -37,7 +37,7 @@ subprojects {
         google()
         mavenCentral()
 
-        if (Libs.AndroidX.Compose.version.endsWith('SNAPSHOT')) {
+        if (!Libs.AndroidX.Compose.snapshot.isEmpty()) {
             maven { url Libs.AndroidX.Compose.snapshotUrl }
         }
         if (Libs.Accompanist.version.endsWith('SNAPSHOT')) {
@@ -62,23 +62,15 @@ subprojects {
             // Treat all Kotlin warnings as errors (disabled by default)
             allWarningsAsErrors = project.hasProperty("warningsAsErrors") ? project.warningsAsErrors : false
 
-            freeCompilerArgs += '-Xopt-in=kotlin.RequiresOptIn'
+            freeCompilerArgs += '-opt-in=kotlin.RequiresOptIn'
 
             // Enable experimental coroutines APIs, including Flow
-            freeCompilerArgs += '-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi'
-            freeCompilerArgs += '-Xopt-in=kotlinx.coroutines.FlowPreview'
-            freeCompilerArgs += '-Xopt-in=kotlin.Experimental'
+            freeCompilerArgs += '-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi'
+            freeCompilerArgs += '-opt-in=kotlinx.coroutines.FlowPreview'
+            freeCompilerArgs += '-opt-in=kotlin.Experimental'
 
             // Set JVM target to 1.8
             jvmTarget = "1.8"
-        }
-    }
-    // Forcing to use the snapshot version
-    configurations.configureEach {
-        resolutionStrategy.eachDependency { details ->
-            if (details.requested.group.startsWith('androidx.compose')) {
-                details.useVersion Libs.AndroidX.Compose.version
-            }
         }
     }
 }

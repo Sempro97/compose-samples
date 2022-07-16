@@ -57,7 +57,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -65,7 +69,8 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension.Companion.fillToConstraints
 import androidx.constraintlayout.compose.Dimension.Companion.preferredWrapContent
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.rememberImagePainter
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.jetcaster.R
 import com.example.jetcaster.data.Episode
 import com.example.jetcaster.data.EpisodeToPodcast
@@ -83,6 +88,7 @@ import java.time.format.FormatStyle
 @Composable
 fun PodcastCategory(
     categoryId: Long,
+    navigateToPlayer: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     /**
@@ -102,7 +108,7 @@ fun PodcastCategory(
      */
     Column(modifier = modifier) {
         CategoryPodcasts(viewState.topPodcasts, viewModel)
-        EpisodeList(viewState.episodes)
+        EpisodeList(viewState.episodes, navigateToPlayer)
     }
 }
 
@@ -111,22 +117,18 @@ private fun CategoryPodcasts(
     topPodcasts: List<PodcastWithExtraInfo>,
     viewModel: PodcastCategoryViewModel
 ) {
-    LazyRow(
-        contentPadding = PaddingValues(0.dp),
-        horizontalArrangement = Arrangement.Start
-    ) {
-        item {
-            CategoryPodcastRow(
-                podcasts = topPodcasts,
-                onTogglePodcastFollowed = viewModel::onTogglePodcastFollowed,
-                modifier = Modifier.fillParentMaxWidth()
-            )
-        }
-    }
+    CategoryPodcastRow(
+        podcasts = topPodcasts,
+        onTogglePodcastFollowed = viewModel::onTogglePodcastFollowed,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
-private fun EpisodeList(episodes: List<EpisodeToPodcast>) {
+private fun EpisodeList(
+    episodes: List<EpisodeToPodcast>,
+    navigateToPlayer: (String) -> Unit
+) {
     LazyColumn(
         contentPadding = PaddingValues(0.dp),
         verticalArrangement = Arrangement.Center
@@ -136,6 +138,7 @@ private fun EpisodeList(episodes: List<EpisodeToPodcast>) {
             EpisodeListItem(
                 episode = item.episode,
                 podcast = item.podcast,
+                onClick = navigateToPlayer,
                 modifier = Modifier.fillParentMaxWidth()
             )
         }
@@ -146,11 +149,10 @@ private fun EpisodeList(episodes: List<EpisodeToPodcast>) {
 fun EpisodeListItem(
     episode: Episode,
     podcast: Podcast,
+    onClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ConstraintLayout(
-        modifier = Modifier.clickable { /* TODO */ } then modifier
-    ) {
+    ConstraintLayout(modifier = modifier.clickable { onClick(episode.uri) }) {
         val (
             divider, episodeTitle, podcastTitle, image, playIcon,
             date, addPlaylist, overflow
@@ -166,13 +168,11 @@ fun EpisodeListItem(
         )
 
         // If we have an image Url, we can show it using Coil
-        Image(
-            painter = rememberImagePainter(
-                data = podcast.imageUrl,
-                builder = {
-                    crossfade(true)
-                }
-            ),
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(podcast.imageUrl)
+                .crossfade(true)
+                .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -236,6 +236,7 @@ fun EpisodeListItem(
                 ) { /* TODO */ }
                 .size(48.dp)
                 .padding(6.dp)
+                .semantics { role = Role.Button }
                 .constrainAs(playIcon) {
                     start.linkTo(parent.start, Keyline1)
                     top.linkTo(titleImageBarrier, margin = 10.dp)
@@ -335,7 +336,9 @@ private fun TopPodcastRowItem(
     onToggleFollowClicked: () -> Unit,
     podcastImageUrl: String? = null,
 ) {
-    Column(modifier) {
+    Column(
+        modifier.semantics(mergeDescendants = true) {}
+    ) {
         Box(
             Modifier
                 .fillMaxWidth()
@@ -343,13 +346,11 @@ private fun TopPodcastRowItem(
                 .align(Alignment.CenterHorizontally)
         ) {
             if (podcastImageUrl != null) {
-                Image(
-                    painter = rememberImagePainter(
-                        data = podcastImageUrl,
-                        builder = {
-                            crossfade(true)
-                        }
-                    ),
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(podcastImageUrl)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -388,6 +389,7 @@ fun PreviewEpisodeListItem() {
         EpisodeListItem(
             episode = PreviewEpisodes[0],
             podcast = PreviewPodcasts[0],
+            onClick = { },
             modifier = Modifier.fillMaxWidth()
         )
     }
